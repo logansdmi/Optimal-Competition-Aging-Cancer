@@ -3,6 +3,30 @@
 <html>
   <head>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.18.1/full/pyodide.js"></script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .loader {
+          border: 8px solid #f3f3f3;
+          border-radius: 50%;
+          border-top: 8px solid #252729;
+          width: 20px;
+          height: 20px;
+          -webkit-animation: spin 2s linear infinite; /* Safari */
+          animation: spin 2s linear infinite;
+        }
+        
+        /* Safari */
+        @-webkit-keyframes spin {
+          0% { -webkit-transform: rotate(0deg); }
+          100% { -webkit-transform: rotate(360deg); }
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        </style>
   </head>
 
   <body>
@@ -11,7 +35,7 @@
       press the plot button when it pops up.
     </p>
     
-
+    <div class="loader" id='loader'></div>
 
 
     <script>
@@ -23,7 +47,7 @@ let pyodide;
             await pyodide.loadPackage("matplotlib");
             await pyodide.loadPackage("scipy");
             // matplotlib is now available
-
+            document.getElementById("loader").style.display = "none";
             pyodide.runPython(`
 
             from js import document
@@ -35,6 +59,7 @@ let pyodide;
 
             div_container = document.createElement('div')
             div_container.innerHTML = """   
+                <p> Cost of cooperation, k: </p>
                 <input type="range" step="0.01" min="0.01" max="1" value="0.5" class="slider" id="k" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>Plot>
                 <output>0.5</output>
                 <br><br>
@@ -82,6 +107,9 @@ let pyodide;
                 k = float(document.getElementById('k').value)
                 NhArr, NsArr, NcArr, NbArr, total = populations(k, f0, mu_c, mu_v, t)
 
+                cNhArr, cNsArr, cNcArr, cNbArr, ctotal = NhArr, NsArr, NcArr, NbArr, total
+
+
 
                 #plotting initial values
                 fig, ax = plt.subplots(1,2,figsize = (7,7))
@@ -90,10 +118,10 @@ let pyodide;
 
 
                 #lineplot
-                ax[0].plot(t, NhArr/total, color = 'k', linestyle = (0, (5, 5)), linewidth = 0.5)
-                ax[0].plot(t, NcArr/total, color = '#3BB170', linestyle = (0, (5, 5)), linewidth = 0.5)
-                ax[0].plot(t, NsArr/total, color = 'maroon', linestyle = (0, (5, 5)), linewidth = 0.5)
-                ax[0].plot(t, NbArr/total, color = 'olive', linestyle = (0, (5, 5)), linewidth = 0.5)
+                ax[0].plot(t, cNhArr/ctotal, color = 'k', linestyle = (0, (5, 5)), linewidth = 0.5)
+                ax[0].plot(t, cNcArr/ctotal, color = '#3BB170', linestyle = (0, (5, 5)), linewidth = 0.5)
+                ax[0].plot(t, cNsArr/ctotal, color = 'maroon', linestyle = (0, (5, 5)), linewidth = 0.5)
+                ax[0].plot(t, cNbArr/ctotal, color = 'olive', linestyle = (0, (5, 5)), linewidth = 0.5)
 
                 a, = ax[0].plot(t, NhArr/total, color = 'k', label = 'h')
                 b, = ax[0].plot(t, NcArr/total, color = 'mediumseagreen', label = 'c')
@@ -123,6 +151,8 @@ let pyodide;
                 img_tag = document.getElementById('fig')
                 img_tag.src = img_str
                 buf.close()
+
+                plt.clf()
 
 
             `)
