@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html>
   <head>
@@ -60,10 +61,14 @@ let pyodide;
             div_container = document.createElement('div')
             div_container.innerHTML = """   
                 <p> Cost of cooperation, k: </p>
-                <input type="range" step="0.01" min="0.01" max="1" value="0.5" class="slider" id="k" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>Plot>
+                <input type="range" step="0.01" min="0.01" max="1" value="0.5" class="slider" id="k" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
                 <output>0.5</output>
                 <br><br>
-                <button onclick='pyodide.globals.generate_plot_img()'>Plot</button>
+                <p> Base reproduciton rate, f0: </p>
+                <input type="range" step="0.001" min="0.00001" max="0.01" value="0.004" class="slider" id="f0" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.5</output>
+                <br><br>
+                
                 <br>
                 <img id="fig" />
             """
@@ -94,20 +99,22 @@ let pyodide;
                 NbArr = (mu_v*mu_c/(fh - mu_v)) * ((np.exp((fh-mu_v-mu_c)*t)-1)/(fh-mu_v-mu_c)-(1-np.exp(-mu_c*t))/mu_c) + (mu_v*mu_c/(fc-fh+mu_c))*((np.exp((fc-mu_v)*t)-1)/(fc-mu_v) - (np.exp((fh-mu_v-mu_c)*t)-1)/(fh-mu_v-mu_c))
                 total = NhArr + NsArr + NcArr + NbArr
                 return NhArr, NsArr, NcArr, NbArr, total
+            
+            tmax = 10000
+            steps = 1000
+            t = np.linspace(0, tmax, steps)
 
+            #initial conditions
+            k,f0,mu_c,mu_v= 0.5,0.004,1e-5,1e-3
+
+            cNhArr, cNsArr, cNcArr, cNbArr, ctotal = populations(k, f0, mu_c, mu_v, t)
 
             def generate_plot_img():
-                tmax = 10000
-                steps = 1000
-                t = np.linspace(0, tmax, steps)
-
-                #initial conditions
-                k,f0,mu_c,mu_v= 0.5,0.004,1e-5,1e-3
+                
 
                 k = float(document.getElementById('k').value)
+                f0 = float(document.getElementById('f0').value)
                 NhArr, NsArr, NcArr, NbArr, total = populations(k, f0, mu_c, mu_v, t)
-
-                cNhArr, cNsArr, cNcArr, cNbArr, ctotal = NhArr, NsArr, NcArr, NbArr, total
 
 
 
@@ -156,7 +163,9 @@ let pyodide;
 
 
             `)
-            }
+            
+            pyodide.globals.generate_plot_img()
+        }
 
             
         main();
