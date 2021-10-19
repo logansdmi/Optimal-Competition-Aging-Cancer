@@ -1,9 +1,113 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <head>
-    <title>This is the title of the webpage!</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.18.1/full/pyodide.js"></script>
   </head>
+
   <body>
-    <p>This is an example paragraph. Anything in the <strong>body</strong> tag will appear on the page, just like this <strong>p</strong> tag and its contents.</p>
+    <p>
+      Python takes some time to load in, 
+      press the plot button when it pops up.
+    </p>
+    
+
+
+
+    <script>
+
+let pyodide;
+        async function main() {
+            pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.18.1/full/" });
+            await pyodide.loadPackage("numpy");
+            await pyodide.loadPackage("matplotlib");
+            await pyodide.loadPackage("scipy");
+            // matplotlib is now available
+
+            pyodide.runPython(`
+            from js import document
+            import numpy as np
+            import matplotlib.pyplot as plt
+            
+            from scipy.integrate import odeint
+            import io, base64
+            div_container = document.createElement('div')
+            div_container.innerHTML = """   
+                <input type="range" step="0.01" min="0.01" max="1" value="0.5" class="slider" id="k" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>Plot>
+                <output>0.5</output>
+                <br><br>
+                <button onclick='pyodide.globals.generate_plot_img()'>Plot</button>
+                <br>
+                <img id="fig" />
+            """
+            document.body.appendChild(div_container)
+            def fitness(V, c, k, f0): 
+                return f0 * V*(1 - k*c)
+            def fitneses(k,f0):
+                '''takes inputs of k and f0 and returns 
+                fh, fc, fs, fb respectively'''
+                return fitness(1,1,k,f0), fitness(1,0,k,f0), fitness(0,1,k,f0), fitness(0,0,k,f0)
+            tmax = 10000 
+            steps = 1000
+            t = np.linspace(0, tmax, steps)
+            
+                
+            def populations(k, f0, mu_c, mu_v, t):
+                '''takes inputs of all the different parameters for the population 
+                and outputs each population and the total population'''
+                fh, fc, fs, fb = fitneses(k,f0)
+                NhArr = np.exp((fh - mu_v - mu_c) * t)
+                NsArr = (mu_v/(fh-mu_v)) * (np.exp((fh- mu_v - mu_c)*t) - np.exp(-mu_c*t))
+                NcArr = (mu_c/(fc-fh+mu_c)) * (np.exp((fc-mu_v)*t) - np.exp((fh-mu_v-mu_c)*t))
+                NbArr = (mu_v*mu_c/(fh - mu_v)) * ((np.exp((fh-mu_v-mu_c)*t)-1)/(fh-mu_v-mu_c)-(1-np.exp(-mu_c*t))/mu_c) + (mu_v*mu_c/(fc-fh+mu_c))*((np.exp((fc-mu_v)*t)-1)/(fc-mu_v) - (np.exp((fh-mu_v-mu_c)*t)-1)/(fh-mu_v-mu_c))
+                total = NhArr + NsArr + NcArr + NbArr
+                return NhArr, NsArr, NcArr, NbArr, total
+            def generate_plot_img():
+                tmax = 10000
+                steps = 1000
+                t = np.linspace(0, tmax, steps)
+                #initial conditions
+                k,f0,mu_c,mu_v= 0.5,0.004,1e-5,1e-3
+                k = float(document.getElementById('k').value)
+                NhArr, NsArr, NcArr, NbArr, total = populations(k, f0, mu_c, mu_v, t)
+                #plotting initial values
+                fig, ax = plt.subplots(1,2,figsize = (7,7))
+                plt.subplots_adjust(left=0.1, bottom=0.4, wspace = 0.5)
+                
+                #lineplot
+                ax[0].plot(t, NhArr/total, color = 'k', linestyle = (0, (5, 5)), linewidth = 0.5)
+                ax[0].plot(t, NcArr/total, color = '#3BB170', linestyle = (0, (5, 5)), linewidth = 0.5)
+                ax[0].plot(t, NsArr/total, color = 'maroon', linestyle = (0, (5, 5)), linewidth = 0.5)
+                ax[0].plot(t, NbArr/total, color = 'olive', linestyle = (0, (5, 5)), linewidth = 0.5)
+                a, = ax[0].plot(t, NhArr/total, color = 'k', label = 'h')
+                b, = ax[0].plot(t, NcArr/total, color = 'mediumseagreen', label = 'c')
+                c, = ax[0].plot(t, NsArr/total, color = 'maroon', label = 's')
+                d, = ax[0].plot(t, NbArr/total, color = 'olive', label = 'b')
+                #stackplot
+                ax[1].fill_between(t,0,NhArr/total, facecolor = "#34495e", label = 'h')
+                ax[1].fill_between(t,NhArr/total, NcArr/total+NhArr/total, facecolor = 'mediumseagreen', label = 'c')
+                ax[1].fill_between(t,NcArr/total+NhArr/total, NsArr/total+NcArr/total+NhArr/total, facecolor = 'maroon', label = 's')
+                ax[1].fill_between(t,NsArr/total+NcArr/total+NhArr/total, 1, facecolor = 'olive', label = 'b')
+                for i in range(2):
+                    ax[i].set_xlabel('Time step')
+                    ax[i].set_ylabel('Fraction of cells')
+                    ax[i].legend(loc = (0.8,0.9), shadow = True)
+                # create buffer for an image
+                buf = io.BytesIO()
+                # copy the plot into the buffer
+                fig.savefig(buf, format='png')
+                buf.seek(0)
+                # encode the image as Base64 string
+                img_str = 'data:image/png;base64,' + base64.b64encode(buf.read()).decode('UTF-8')
+                # show the image
+                img_tag = document.getElementById('fig')
+                img_tag.src = img_str
+                buf.close()
+            `)
+            }
+
+            
+        main();
+      
+    </script>
   </body>
 </html>
