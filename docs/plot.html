@@ -31,11 +31,15 @@
   </head>
 
   <body>
+    <div id ='txt'>
     <p>
-      Python takes some time to load in...
+      Python takes some time to load in... 
     </p>
+    </div>
     
-    <div class="loader" id='loader'></div>
+    <div class="loader" id='loader'>
+      
+    </div>
 
 
     <script>
@@ -48,6 +52,7 @@ let pyodide;
             await pyodide.loadPackage("scipy");
             // matplotlib is now available
             document.getElementById("loader").style.display = "none";
+            document.getElementById("txt").style.display = "none";
             pyodide.runPython(`
 
             from js import document
@@ -59,16 +64,23 @@ let pyodide;
 
             div_container = document.createElement('div')
             div_container.innerHTML = """   
-                <p> Cost of cooperation, k: </p>
-                <input type="range" step="0.01" min="0.01" max="1" value="0.5" class="slider" id="k" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
-                <output>0.5</output>
-                <br><br>
-                <p> Base reproduciton rate, f0: </p>
-                <input type="range" step="0.001" min="0.00001" max="0.01" value="0.004" class="slider" id="f0" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
-                <output>0.5</output>
-                <br><br>
                 
-                <br>
+                
+                <p> Cost of cooperation, k:    &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &emsp13;    Base reproduciton rate, f0: </p>
+                <p><input type="range" step="0.01" min="0.01" max="1" value="0.5" class="slider" id="k" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.5</output>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="range" step="0.001" min="0.00001" max="0.01" value="0.004" class="slider" id="f0" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.004</output></p>
+                <p> Rate of loss of vigor, mu_v:   &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &emsp13; Rate of loss of cooperation, mu_c:</p>
+                
+                <input type="range" step="0.0001" min="0.0001" max="0.0019" value="0.001" class="slider" id="mu_v" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.001</output>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="range" step="0.00000001" min="0.000001" max="0.00009" value="0.00001" class="slider" id="mu_c" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.00001</output>
+                
+              
                 <img id="fig" />
             """
             document.body.appendChild(div_container)
@@ -113,6 +125,8 @@ let pyodide;
 
                 k = float(document.getElementById('k').value)
                 f0 = float(document.getElementById('f0').value)
+                mu_c = float(document.getElementById('mu_c').value)
+                mu_v = float(document.getElementById('mu_v').value)
                 NhArr, NsArr, NcArr, NbArr, total = populations(k, f0, mu_c, mu_v, t)
 
 
