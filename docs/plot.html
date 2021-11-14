@@ -74,11 +74,14 @@ let pyodide;
                 <output>0.004</output></p>
                 <p> Rate of loss of vigor, mu_v:   &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &emsp13; Rate of loss of cooperation, mu_c:</p>
                 
+                <p>
                 <input type="range" step="0.0001" min="0.0001" max="0.0019" value="0.001" class="slider" id="mu_v" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
                 <output>0.001</output>
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
                 <input type="range" step="0.00000001" min="0.000001" max="0.00009" value="0.00001" class="slider" id="mu_c" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
                 <output>0.00001</output>
+                </p>
+                
                 
               
                 <img id="fig" />
