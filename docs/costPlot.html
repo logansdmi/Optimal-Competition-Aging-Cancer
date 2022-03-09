@@ -1,0 +1,303 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.18.1/full/pyodide.js"></script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .loader {
+          border: 8px solid #f3f3f3;
+          border-radius: 50%;
+          border-top: 8px solid #252729;
+          width: 20px;
+          height: 20px;
+          -webkit-animation: spin 2s linear infinite; /* Safari */
+          animation: spin 2s linear infinite;
+        }
+        
+        /* Safari */
+        @-webkit-keyframes spin {
+          0% { -webkit-transform: rotate(0deg); }
+          100% { -webkit-transform: rotate(360deg); }
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        </style>
+  </head>
+
+  <body>
+    <div id ='txt'>
+    <p>
+      Python takes some time to load in... 
+    </p>
+    </div>
+    
+    <div class="loader" id='loader'>
+      
+    </div>
+
+
+    <script>
+
+let pyodide;
+        async function main() {
+            pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.18.1/full/" });
+            await pyodide.loadPackage("numpy");
+            await pyodide.loadPackage("matplotlib");
+            
+            // matplotlib is now available
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("txt").style.display = "none";
+            pyodide.runPython(`
+
+            from js import document
+            import numpy as np
+            import matplotlib.pyplot as plt
+            
+            #from scipy.integrate import odeint
+            import io, base64
+
+            div_container = document.createElement('div')
+            div_container.innerHTML = """   
+                
+                
+                <p> Cost of cooperation, k:    &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &emsp13;    Base reproduction rate, f0: </p>
+                <p><input type="range" step="0.01" min="0.01" max="1" value="0.5" class="slider" id="k" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.5</output>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="range" step="0.001" min="0.00001" max="0.01" value="0.004" class="slider" id="f0" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.004</output></p>
+                <p> Rate of loss of vigor, mu_v:   &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &emsp13; Rate of loss of cooperation, mu_c:</p>
+                <p>
+                <input type="range" step="0.0001" min="0.0001" max="0.0019" value="0.001" class="slider" id="mu_v" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.001</output>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="range" step="0.00000001" min="0.000001" max="0.00009" value="0.00001" class="slider" id="mu_c" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.00001</output>
+                </p>
+                <p> Cancer removal rate, beta_c:   &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &emsp14;  Senescent removal rate, beta_s:</p>
+                <p>
+                <input type="range" step="0.0001" min="0.0001" max="0.002" value="0.0001" class="slider" id="bc" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.0001</output>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="range" step="0.0001" min="0.0001" max="0.002" value="0.0001" class="slider" id="bs" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.0001</output>
+                </p>
+                <p> Therapy start time, T1:   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&emsp14;&emsp14;&emsp14;&#8198;Therapy end time, T2:</p>
+                <p>
+                <input type="range" step="1" min="0.0001" max="10000" value="0.0001" class="slider" id="T1" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.0001</output>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="range" step="1" min="0.0001" max="10000" value="0.0001" class="slider" id="T2" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.0001</output>
+                </p>
+                <p> Relative importance of control, alpha:</p>
+                <p>
+                <input type="range" step="1" min="0.0001" max="200" value="0.0001" class="slider" id="alpha" oninput="this.nextElementSibling.value = this.value" onclick='pyodide.globals.generate_plot_img()'>>
+                <output>0.0001</output>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input id="reset" type="button" value="Reset">
+
+                </p>
+                
+                <img id="fig" />
+            """
+            document.body.appendChild(div_container)
+
+
+            def fitness(V, c, k, f0): 
+                return f0 * V*(1 - k*c)
+
+            def fitneses(k,f0):
+                '''takes inputs of k and f0 and returns 
+                fh, fc, fs, fb respectively'''
+                return fitness(1,1,k,f0), fitness(1,0,k,f0), fitness(0,1,k,f0), fitness(0,0,k,f0)
+
+
+            def Nb( t, fh, fc, fs, fb, mu_c, mu_v):
+                a = (mu_c*mu_v/(fs - fh+mu_v))
+                b = (fh- mu_v - mu_c)
+                c = (fs - mu_c)
+                d = (mu_v*mu_c/(fc-fh+mu_c))
+                g = fc - mu_v
+                
+                nb = -(a+d)/(b-fb)*np.exp(b*t) + a/(c-fb)*np.exp(c*t) + d/(g-fb)*np.exp(g*t) + ( (a+d)/(b-fb) - a/(c-fb) - d/(g-fb) ) * np.exp(fb*t)
+                return nb
+
+                
+            def populations(fh, fc, fs, fb, mu_c, mu_v,t):
+                '''takes inputs of all the different parameters for the population 
+                and outputs each population and the total population'''
+                NhArr = np.exp((fh - mu_v - mu_c) * t)
+                #NsArr = -1*(mu_v/(fs - fh+mu_v)) * (np.exp((fh- mu_v - mu_c)*t) - np.exp((fs-mu_c)*t))
+                NsArr = (mu_v/(fs - fh+mu_v)) * (-np.exp((fh- mu_v - mu_c)*t) + np.exp((fs-mu_c)*t))
+                NcArr = (mu_c/(fc-fh+mu_c)) * (np.exp((fc-mu_v)*t) - np.exp((fh-mu_v-mu_c)*t))
+                NbArr =  Nb( t, fh, fc, fs, fb, mu_c, mu_v)#.reshape(len(t))
+                total = NhArr + NsArr + NcArr + NbArr
+                return NhArr, NsArr, NcArr, NbArr, total
+
+            def r(k, f0, bh, bc, bs, bb):
+                '''for a given k and f0 it uses the different removal rates (bh, bc, bs, bb) to give r for each type of cell'''
+                rh =  - bh + fitness(1,1,k,f0)
+                rc =  - bc + fitness(1,0,k,f0)
+                rs =  - bs + fitness(0,1,k,f0)
+                rb =  - bb + fitness(0,0,k,f0)
+                return rh, rc, rs, rb
+
+            def popWithRemoval(k, f0, mu_c, mu_v, bh, bc, bs, bb):
+                '''given the input parameters returns the populations of each cell over a given time'''
+                rh, rc, rs, rb =  r(k, f0, bh, bc, bs, bb)
+                NhArr, NsArr, NcArr, NbArr, total = populations(rh, rc, rs, rb, mu_c, mu_v,t)
+                return NhArr, NsArr, NcArr, NbArr, total 
+
+            def popArrays(k,f0,mu_c,mu_v):
+                '''gets the populations and total given the inputed parameters'''
+                fh, fc, fs, fb = fitneses(k,f0)
+                NhArr, NsArr, NcArr, NbArr, total = populations(fh, fc, fs, fb, mu_c, mu_v,t)
+                return NhArr, NsArr, NcArr, NbArr, total   
+
+            def control(idx1, idx2, bh, bc, bs, bb,steps):
+                '''return arrays of removal rates where they are on between idx1 and idx2 '''
+                bhArr = np.zeros(steps)
+                bcArr = np.zeros(steps)
+                bsArr = np.zeros(steps)
+                bbArr = np.zeros(steps)
+                idx1 = int(idx1)
+                idx2 = int(idx2)
+                
+                bhArr[idx1:idx2] = bh
+                bcArr[idx1:idx2] = bc
+                bsArr[idx1:idx2] = bs
+                bbArr[idx1:idx2] = bb
+                
+                return bhArr, bcArr, bsArr, bbArr
+                
+            def controlMutations(T1, T2, mu_c, mu_v, steps):
+
+                vArr[T1:T2] = mu_v
+                cArr[T1:T2] = mu_c
+                
+                return vArr, cArr
+
+            def functional(t, k, f0, mu_c, mu_v, bh, bc, bs, bb, alpha):
+                '''The cost functional for cancer removal'''
+                rh, rc, rs, rb =  r(k, f0, bh, bc, bs, bb)
+                NhArr, NsArr, NcArr, NbArr, total = populations(rh, rc, rs, rb, mu_c, mu_v,t)
+                
+                return -NhArr/total - rc*alpha # this was changed from + rc*alpha
+
+            def cost(t, k, f0, mu_c, mu_v, bh, bc, bs, bb, alpha):
+                '''integrating the cost functional '''
+                c = np.trapz(functional(t, k, f0, mu_c, mu_v, bh, bc, bs, bb, alpha), t)
+                return c
+
+            
+            
+            tmax = 10000
+            steps = 1000
+            t = np.linspace(0, tmax, steps)
+
+            #initial conditions
+            k,f0,mu_c,mu_v= 0.5,0.004,1e-5,1e-3
+
+            cNhArr, cNsArr, cNcArr, cNbArr, ctotal = popArrays(k, f0, mu_c, mu_v)
+
+            def generate_plot_img():
+                
+
+                k = float(document.getElementById('k').value)
+                f0 = float(document.getElementById('f0').value)
+                mu_c = float(document.getElementById('mu_c').value)
+                mu_v = float(document.getElementById('mu_v').value)
+
+                alpha = float(document.getElementById('alpha').value)
+                
+                bc = float(document.getElementById('bc').value)
+                bs = float(document.getElementById('bs').value)
+                bh =0
+                bb = 0
+
+                T1 = float(document.getElementById('T1').value)/10
+                T2 = float(document.getElementById('T2').value)/10
+                
+                bhArr, bcArr, bsArr, bbArr = control(T1, T2, bh, bc, bs, bb,steps)
+                NhArr, NsArr, NcArr, NbArr, total = popWithRemoval(k,f0,mu_c,mu_v,bhArr, bcArr, bsArr, bbArr)
+
+
+                #plotting initial values
+                fig, ax = plt.subplots(1,3,figsize = (9,7),gridspec_kw={'width_ratios': [4, 4,1]})
+                plt.subplots_adjust(left=0.1, bottom=0.4, wspace = 0.5)
+                
+
+
+                #lineplot
+                ax[0].plot(t, cNhArr/ctotal, color = 'k', linestyle = (0, (5, 5)), linewidth = 0.5)
+                ax[0].plot(t, cNcArr/ctotal, color = '#3BB170', linestyle = (0, (5, 5)), linewidth = 0.5)
+                ax[0].plot(t, cNsArr/ctotal, color = 'maroon', linestyle = (0, (5, 5)), linewidth = 0.5)
+                ax[0].plot(t, cNbArr/ctotal, color = 'olive', linestyle = (0, (5, 5)), linewidth = 0.5)
+
+                ax[0].plot(t, NhArr/total, color = 'k', label = 'h')
+                ax[0].plot(t, NcArr/total, color = 'mediumseagreen', label = 'c')
+                ax[0].plot(t, NsArr/total, color = 'maroon', label = 's')
+                ax[0].plot(t, NbArr/total, color = 'olive', label = 'b')
+
+
+                #stackplot
+                ax[1].fill_between(t,0,NhArr/total, facecolor = "#34495e", label = 'h')
+                ax[1].fill_between(t,NhArr/total, NcArr/total+NhArr/total, facecolor = 'mediumseagreen', label = 'c')
+                ax[1].fill_between(t,NcArr/total+NhArr/total, NsArr/total+NcArr/total+NhArr/total, facecolor = 'maroon', label = 's')
+                ax[1].fill_between(t,NsArr/total+NcArr/total+NhArr/total, 1, facecolor = 'olive', label = 'b')
+
+                for i in range(2):
+                    ax[i].set_xlabel('Time step')
+                    ax[i].set_ylabel('Fraction of cells')
+                    ax[i].legend(loc = (0.8,0.9), shadow = True)
+                    
+                # cost plot
+                costt = cost(t, k, f0, mu_c, mu_v, bhArr, bcArr, bsArr, bbArr, alpha)
+                costLine = ax[2].axhline(costt)
+                ax[2].set_ylim([-8000, -2000])
+                ax[2].set_ylabel("Cost")
+
+                # create buffer for an image
+                buf = io.BytesIO()
+                # copy the plot into the buffer
+                fig.savefig(buf, format='png')
+                buf.seek(0)
+                # encode the image as Base64 string
+                img_str = 'data:image/png;base64,' + base64.b64encode(buf.read()).decode('UTF-8')
+                # show the image
+                img_tag = document.getElementById('fig')
+                img_tag.src = img_str
+                buf.close()
+
+                plt.clf()
+
+
+            `)
+            
+            pyodide.globals.generate_plot_img();
+            document.getElementById('reset').onclick = function(){
+                  document.getElementById('k').value = 0.5;
+                  document.getElementById('f0').value = 0.004;
+                  document.getElementById('mu_c').value = 0.00001;
+                  document.getElementById('mu_v').value = 0.001;
+                  document.getElementById('bc').value = 0.0001;
+                  document.getElementById('bs').value = 0.0001;
+                  document.getElementById('T1').value = 0.0001;
+                  document.getElementById('T2').value = 0.0001;
+                  document.getElementById('alpha').value = 0.0001;
+                  pyodide.globals.generate_plot_img();
+                };
+        }
+
+            
+        main();
+      
+    </script>
+  </body>
+</html>
